@@ -1,0 +1,26 @@
+# Korean Ontology Extractor — example configuration
+# Run with: onto-extract --config configs/example.yaml
+
+# URLs to process in batch mode
+urls:
+  - https://ko.wikipedia.org/wiki/인공지능
+  - https://ko.wikipedia.org/wiki/기계학습
+
+# Morpheme tagger: 'komoran' (default, pure-Java, no system deps)
+# or 'mecab' (faster, requires mecab-ko system package)
+tagger: komoran
+
+# Concept term selection
+min_term_len: 2       # ignore single-character nouns
+top_terms: 60         # keep top-60 by TF-IDF score
+min_freq: 2           # must appear at least twice
+
+# Co-occurrence relations
+use_cooccurrence: true
+cooc_min_count: 3     # minimum co-occurrence count to create a relatedTo link
+
+# Ontology settings
+base_iri: "http://example.org/onto#"
+
+# Output
+output_dir: output
