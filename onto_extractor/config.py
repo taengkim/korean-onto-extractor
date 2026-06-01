@@ -21,6 +21,10 @@ class ExtractConfig(BaseModel):
     )
     output_dir: Path = Field(Path("output"), description="Directory for .owl output files")
     urls: list[str] = Field(default_factory=list, description="List of URLs to process (for run_all)")
+    lexicon_dir: Path | None = Field(
+        None,
+        description="Lexicon directory path. None = use package-bundled lexicons/",
+    )
 
     @field_validator("tagger")
     @classmethod

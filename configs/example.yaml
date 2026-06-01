@@ -24,3 +24,6 @@ base_iri: "http://example.org/onto#"
 
 # Output
 output_dir: output
+
+# 사전 디렉터리 (None = 패키지 내장 lexicons/ 사용)
+# lexicon_dir: /path/to/custom/lexicons

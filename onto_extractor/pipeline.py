@@ -6,9 +6,10 @@ from pathlib import Path
 
 from onto_extractor.config import ExtractConfig
 from onto_extractor.fetch import fetch_text
+from onto_extractor.lexicon import Lexicon
 from onto_extractor.owl_builder import build_owl
-from onto_extractor.preprocess import extract_nouns, split_sentences
-from onto_extractor.relations import extract_cooccurrence, extract_isa
+from onto_extractor.preprocess import extract_nouns, normalize_nouns, split_sentences
+from onto_extractor.relations import extract_cooccurrence, extract_isa, extract_typed_relations
 from onto_extractor.terms import select_terms
 
 logger = logging.getLogger(__name__)
@@ -24,11 +25,12 @@ def run_one(url: str, cfg: ExtractConfig) -> Path:
     """Run the full extraction pipeline for a single URL.
 
     Pipeline stages:
-    1. fetch     → raw text
-    2. preprocess → sentences + noun lists
-    3. terms     → concept candidates
-    4. relations → is-a and co-occurrence pairs
-    5. owl_builder → .owl file
+    1. fetch       → raw text
+    2. preprocess  → sentences + raw noun lists
+    3. normalize   → noise filtering + unit normalization (via lexicon)
+    4. terms       → concept candidates (stopword filtering + entity injection via lexicon)
+    5. relations   → is-a pairs (Hearst) + typed pairs (relation triggers) + co-occurrence
+    6. owl_builder → .owl file
 
     Args:
         url: Web page URL to process.
@@ -39,14 +41,23 @@ def run_one(url: str, cfg: ExtractConfig) -> Path:
     """
     logger.info("=== Processing URL: %s ===", url)
 
+    # Load lexicon (uses bundled lexicons/ when cfg.lexicon_dir is None)
+    lexicon = Lexicon.load(cfg.lexicon_dir)
+
+    # Stage 1: Fetch
     text = fetch_text(url)
 
+    # Stage 2: Preprocess
     sentences = split_sentences(text)
     if not sentences:
         raise ValueError(f"No sentences extracted from {url!r}")
     noun_lists = extract_nouns(sentences, tagger=cfg.tagger)
 
-    concepts = select_terms(noun_lists, cfg)
+    # Stage 3: Normalize (unit normalization + noise filtering)
+    noun_lists = normalize_nouns(noun_lists, lexicon)
+
+    # Stage 4: Terms (stopword filtering + entity injection)
+    concepts = select_terms(noun_lists, cfg, lexicon=lexicon)
     if not concepts:
         raise ValueError(
             f"No concept terms selected for {url!r} — "
@@ -54,13 +65,17 @@ def run_one(url: str, cfg: ExtractConfig) -> Path:
         )
     concept_set = set(concepts)
 
+    # Stage 5: Relations
     isa_pairs = extract_isa(sentences, concept_set)
+    typed_pairs = extract_typed_relations(sentences, concept_set, lexicon)
+
     cooc_pairs: list[tuple[str, str]] = []
     if cfg.use_cooccurrence:
         cooc_pairs = extract_cooccurrence(noun_lists, concept_set, cfg.cooc_min_count)
 
+    # Stage 6: OWL output
     out_path = Path(cfg.output_dir) / _url_to_filename(url)
-    build_owl(concepts, isa_pairs, cooc_pairs, cfg, out_path)
+    build_owl(concepts, isa_pairs, cooc_pairs, cfg, out_path, typed_pairs=typed_pairs)
 
     logger.info("=== Done: %s ===", out_path)
     return out_path

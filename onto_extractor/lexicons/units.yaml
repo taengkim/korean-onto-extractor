@@ -1,0 +1,139 @@
+# 단위 정규화 사전 (Unit Normalization Dictionary)
+# 표준형(canonical): [변형 표현들]
+# 형태소 분석 후 나오는 단위 변형을 표준 표현으로 통일합니다.
+
+킬로그램:
+  - kg
+  - 킬로
+  - kilogram
+  - 킬로그람
+
+그램:
+  - g
+  - 그람
+  - gram
+
+밀리그램:
+  - mg
+  - 밀리그람
+  - milligram
+
+미터:
+  - m
+  - meter
+  - 미타
+
+킬로미터:
+  - km
+  - kilometer
+
+센티미터:
+  - cm
+  - centimeter
+  - 센치미터
+
+밀리미터:
+  - mm
+  - millimeter
+
+리터:
+  - l
+  - L
+  - liter
+  - 리타
+
+밀리리터:
+  - ml
+  - mL
+  - milliliter
+
+초:
+  - sec
+  - second
+  - 세컨드
+
+분:
+  - min
+  - minute
+
+시간:
+  - hr
+  - hour
+  - 아워
+
+퍼센트:
+  - "%"
+  - percent
+  - pct
+  - 퍼
+
+섭씨:
+  - °c
+  - celsius
+  - 도씨
+  - ℃
+
+헤르츠:
+  - hz
+  - Hz
+  - hertz
+
+킬로헤르츠:
+  - khz
+  - kHz
+  - kilohertz
+
+메가헤르츠:
+  - mhz
+  - MHz
+  - megahertz
+
+기가헤르츠:
+  - ghz
+  - GHz
+  - gigahertz
+
+바이트:
+  - byte
+  - B
+
+킬로바이트:
+  - kb
+  - KB
+  - kilobyte
+
+메가바이트:
+  - mb
+  - MB
+  - megabyte
+
+기가바이트:
+  - gb
+  - GB
+  - gigabyte
+
+테라바이트:
+  - tb
+  - TB
+  - terabyte
+
+와트:
+  - w
+  - W
+  - watt
+
+킬로와트:
+  - kw
+  - kW
+  - kilowatt
+
+볼트:
+  - v
+  - V
+  - volt
+
+암페어:
+  - a
+  - A
+  - ampere
+  - 암페어

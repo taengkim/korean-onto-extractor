@@ -3,7 +3,10 @@ from __future__ import annotations
 import logging
 import re
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from onto_extractor.lexicon import Lexicon
 
 logger = logging.getLogger(__name__)
 
@@ -86,4 +89,35 @@ def extract_nouns(sentences: list[str], tagger: str = "komoran") -> list[list[st
             nouns = []
         result.append(nouns)
     logger.debug("extract_nouns: processed %d sentences", len(sentences))
+    return result
+
+
+def normalize_nouns(
+    noun_lists: list[list[str]],
+    lexicon: "Lexicon",
+) -> list[list[str]]:
+    """Apply unit normalization and noise filtering to noun lists.
+
+    Uses the lexicon's unit_map and noise_patterns to clean nouns extracted
+    by the morpheme tagger before they reach term selection.
+
+    Args:
+        noun_lists: Per-sentence noun lists from extract_nouns.
+        lexicon: Loaded Lexicon instance.
+
+    Returns:
+        Cleaned noun lists of the same length as the input.
+    """
+    result: list[list[str]] = []
+    dropped = 0
+    for nouns in noun_lists:
+        cleaned: list[str] = []
+        for noun in nouns:
+            if lexicon.is_noise(noun):
+                dropped += 1
+                continue
+            cleaned.append(lexicon.normalize(noun))
+        result.append(cleaned)
+    if dropped:
+        logger.debug("normalize_nouns: dropped %d noisy tokens", dropped)
     return result

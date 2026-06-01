@@ -4,6 +4,10 @@ import logging
 import re
 from collections import Counter
 from itertools import combinations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from onto_extractor.lexicon import Lexicon
 
 logger = logging.getLogger(__name__)
 
@@ -169,4 +173,53 @@ def extract_cooccurrence(
         if count >= min_count
     ]
     logger.info("extract_cooccurrence: found %d co-occurrence pairs", len(result))
+    return result
+
+
+def extract_typed_relations(
+    sentences: list[str],
+    concepts: set[str],
+    lexicon: "Lexicon",
+) -> list[tuple[str, str, str]]:
+    """Extract typed (subject, relation_type, object) triples using relation trigger patterns.
+
+    Each pattern in lexicon.relation_patterns is applied to every sentence.
+    Only triples where both subject and object are known concepts are kept.
+
+    Args:
+        sentences: List of Korean sentences.
+        concepts: Set of concept strings from select_terms.
+        lexicon: Loaded Lexicon with compiled relation_patterns.
+
+    Returns:
+        Deduplicated list of (subject, relation_type, object) triples.
+    """
+    if not lexicon.relation_patterns:
+        return []
+
+    seen: dict[tuple[str, str, str], None] = {}
+
+    for sent in sentences:
+        for rel_pat in lexicon.relation_patterns:
+            for match in rel_pat.pattern.finditer(sent):
+                try:
+                    raw_subj = match.group("subj").strip()
+                    raw_obj = match.group("obj").strip()
+                except IndexError:
+                    continue
+                if rel_pat.swapped:
+                    raw_subj, raw_obj = raw_obj, raw_subj
+                subj = _find_concept(raw_subj, concepts)
+                obj = _find_concept(raw_obj, concepts)
+                if subj and obj and subj != obj:
+                    triple = (subj, rel_pat.relation_type, obj)
+                    if triple not in seen:
+                        seen[triple] = None
+                        logger.debug(
+                            "typed-rel [%s]: %s → %s",
+                            rel_pat.relation_type, subj, obj,
+                        )
+
+    result = list(seen.keys())
+    logger.info("extract_typed_relations: found %d typed relation triples", len(result))
     return result

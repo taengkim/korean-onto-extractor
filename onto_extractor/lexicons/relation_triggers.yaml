@@ -1,0 +1,78 @@
+# 관계 트리거 사전 (Typed Relation Trigger Dictionary)
+# 각 항목: pattern(정규식) + swapped(주어/목적어 역전 여부)
+# (?P<subj>...) = 주어 개념, (?P<obj>...) = 목적어 개념
+# swapped: true 이면 패턴 내 subj/obj 역할이 뒤집힘 (OWL 방향 보정)
+
+hasPart:
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)(?:로|으로)\s+구성
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)(?:을|를)\s+포함
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)의\s+구성요소인\s+(?P<obj>[가-힣]+)
+    swapped: false
+  - pattern: |-
+      (?P<obj>[가-힣]+)(?:은|는)\s+(?P<subj>[가-힣]+)의\s+일부
+    swapped: true
+
+madeOf:
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)(?:로|으로)\s+만들어
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)(?:로|으로)\s+이루어
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)의\s+재료(?:는|은|가|이)\s+(?P<obj>[가-힣]+)
+    swapped: false
+
+usedFor:
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)에\s+(?:사용|활용)
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)을\s+위해\s+사용
+    swapped: false
+  - pattern: |-
+      (?P<obj>[가-힣]+)에\s+(?:사용|활용)되는\s+(?P<subj>[가-힣]+)
+    swapped: true
+
+locatedIn:
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)에\s+(?:위치|존재)
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)에\s+있
+    swapped: false
+  - pattern: |-
+      (?P<obj>[가-힣]+)에\s+위치한\s+(?P<subj>[가-힣]+)
+    swapped: true
+
+causes:
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:가|이)\s+(?P<obj>[가-힣]+)을\s+(?:유발|초래|야기)
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:가|이)\s+(?P<obj>[가-힣]+)의\s+원인
+    swapped: false
+  - pattern: |-
+      (?P<obj>[가-힣]+)(?:은|는)\s+(?P<subj>[가-힣]+)에\s+의해\s+(?:유발|발생)
+    swapped: true
+
+producedBy:
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)에\s+의해\s+(?:생산|제작|개발|발견)
+    swapped: false
+  - pattern: |-
+      (?P<obj>[가-힣]+)(?:가|이)\s+(?P<subj>[가-힣]+)을\s+(?:생산|제작|개발|발견)
+    swapped: true
+
+hasProperty:
+  - pattern: |-
+      (?P<subj>[가-힣]+)의\s+(?:특성|특징|성질|속성)(?:은|는|이|가)\s+(?P<obj>[가-힣]+)
+    swapped: false
+  - pattern: |-
+      (?P<subj>[가-힣]+)(?:는|은|이|가)\s+(?P<obj>[가-힣]+)(?:의|한)\s+(?:특성|특징|성질|속성)
+    swapped: false
