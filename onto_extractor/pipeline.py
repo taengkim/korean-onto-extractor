@@ -51,7 +51,7 @@ def run_one(url: str, cfg: ExtractConfig) -> Path:
     sentences = split_sentences(text)
     if not sentences:
         raise ValueError(f"No sentences extracted from {url!r}")
-    noun_lists = extract_nouns(sentences, tagger=cfg.tagger)
+    noun_lists = extract_nouns(sentences, tagger=cfg.tagger, use_phrases=cfg.use_phrases)
 
     # Stage 3: Normalize (unit normalization + noise filtering)
     noun_lists = normalize_nouns(noun_lists, lexicon)

@@ -38,7 +38,8 @@ split_sentences  한국어 종결어미 기반 문장 분리
  │
  ▼
 extract_nouns    KoNLPy(Komoran/MeCab)로 명사 추출
- │
+ │              └─ use_phrases=True: .pos()로 바이그램 복합명사도 추출
+ │                 예) [인공, 지능] → 인공지능 추가
  ▼
 normalize_nouns  단위 변형 정규화 + 노이즈 제거  ◄─ units / stopwords 사전
  │
@@ -83,7 +84,8 @@ korean-onto-extractor/
 └── tests/
     ├── test_relations.py         # Hearst 패턴 + 동시출현 단위 테스트
     ├── test_terms.py             # select_terms 단위 테스트
-    └── test_lexicon.py           # Lexicon 로딩 및 통합 테스트
+    ├── test_lexicon.py           # Lexicon 로딩 및 통합 테스트
+    └── test_preprocess.py        # 명사구 추출 단위 테스트
 ```
 
 ---
@@ -158,6 +160,7 @@ paths = run_all(cfg)
 | `min_term_len` | `2` | 개념 최소 글자수 |
 | `top_terms` | `60` | TF-IDF 상위 N개 개념 |
 | `min_freq` | `2` | 명사 최소 출현 빈도 |
+| `use_phrases` | `true` | 바이그램 복합명사 추출 여부 (인공+지능→인공지능) |
 | `use_cooccurrence` | `true` | 동시출현 관계(`relatedTo`) 사용 여부 |
 | `cooc_min_count` | `3` | 동시출현 임계값 |
 | `base_iri` | `http://example.org/onto#` | 온톨로지 IRI 베이스 |

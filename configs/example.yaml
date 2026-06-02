@@ -10,6 +10,9 @@ urls:
 # or 'mecab' (faster, requires mecab-ko system package)
 tagger: komoran
 
+# Compound noun phrase extraction (bigram: 인공+지능 → 인공지능)
+use_phrases: true
+
 # Concept term selection
 min_term_len: 2       # ignore single-character nouns
 top_terms: 60         # keep top-60 by TF-IDF score

@@ -10,6 +10,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# POS tags considered "content nouns" for compound noun formation.
+# NNB (의존명사: 것/수/때) is intentionally excluded — those are stopwords.
+_COMPOUND_NOUN_TAGS: dict[str, frozenset[str]] = {
+    "komoran":  frozenset({"NNG", "NNP"}),
+    "mecab":    frozenset({"NNG", "NNP"}),
+    "okt":      frozenset({"Noun"}),
+    "hannanum": frozenset({"NC", "NQ"}),
+    "kkma":     frozenset({"NNG", "NNP"}),
+}
+_DEFAULT_COMPOUND_TAGS: frozenset[str] = frozenset({"NNG", "NNP"})
+
 _SENT_SPLIT_RE = re.compile(
     r"(?<=[.!?])\s+|(?<=다\.)\s+|(?<=요\.)\s+|(?<=죠\.)\s+|(?<=군요\.)\s+",
     re.UNICODE,
@@ -69,26 +80,117 @@ def _get_tagger(tagger_name: str) -> Any:
     return instance
 
 
-def extract_nouns(sentences: list[str], tagger: str = "komoran") -> list[list[str]]:
-    """Extract nouns from each sentence using a KoNLPy tagger.
+def _collect_nouns_and_phrases(
+    tagged: list[tuple[str, str]],
+    compound_tags: frozenset[str],
+) -> list[str]:
+    """Extract individual nouns and bigram compound noun phrases from POS-tagged tokens.
+
+    Scans the tagged token list for runs of consecutive content-noun morphemes.
+    For each run it emits:
+    - Every individual morpheme in the run
+    - Every adjacent pair (bigram) concatenated as a compound noun
+
+    Example:
+        tagged = [("인공", "NNG"), ("지능", "NNG"), ("이", "JX"), ("연구", "NNG")]
+        compound_tags = frozenset({"NNG", "NNP"})
+        → ["인공", "지능", "인공지능", "연구"]
+
+    Args:
+        tagged: List of (morpheme, pos_tag) tuples from tagger.pos().
+        compound_tags: Set of POS tags treated as content nouns.
+
+    Returns:
+        Deduplicated list preserving first-occurrence order.
+    """
+    seen: dict[str, None] = {}
+    i = 0
+    while i < len(tagged):
+        word, pos = tagged[i]
+        word = word.strip()
+        if pos in compound_tags and word:
+            # Collect consecutive noun run
+            run: list[str] = [word]
+            j = i + 1
+            while j < len(tagged):
+                w2, p2 = tagged[j]
+                w2 = w2.strip()
+                if p2 in compound_tags and w2:
+                    run.append(w2)
+                    j += 1
+                else:
+                    break
+
+            # Emit individual morphemes
+            for m in run:
+                if m not in seen:
+                    seen[m] = None
+
+            # Emit bigrams (adjacent pairs)
+            for k in range(len(run) - 1):
+                phrase = run[k] + run[k + 1]
+                if phrase not in seen:
+                    seen[phrase] = None
+
+            i = j
+        else:
+            i += 1
+
+    return list(seen.keys())
+
+
+def extract_nouns(
+    sentences: list[str],
+    tagger: str = "komoran",
+    use_phrases: bool = True,
+) -> list[list[str]]:
+    """Extract nouns (and optionally compound noun phrases) from sentences.
+
+    When *use_phrases* is True (default), the function uses ``tagger.pos()``
+    to find consecutive content-noun morpheme runs and emits both individual
+    nouns and bigram compound nouns (복합명사).  When False it falls back to
+    the simpler ``tagger.nouns()`` call (original behaviour).
 
     Args:
         sentences: List of sentence strings.
         tagger: KoNLPy tagger name ('komoran', 'mecab', 'okt', etc.).
+        use_phrases: If True, also extract bigram compound noun phrases.
 
     Returns:
-        Parallel list where each element is the list of nouns in that sentence.
+        Parallel list where each element is the list of nouns/phrases in that sentence.
     """
     t = _get_tagger(tagger)
+    compound_tags = _COMPOUND_NOUN_TAGS.get(tagger, _DEFAULT_COMPOUND_TAGS)
     result: list[list[str]] = []
+
     for sent in sentences:
-        try:
-            nouns = t.nouns(sent)
-        except Exception as exc:
-            logger.warning("Tagger error on sentence %r: %s", sent[:40], exc)
-            nouns = []
+        if use_phrases:
+            try:
+                tagged = t.pos(sent)
+                nouns = _collect_nouns_and_phrases(tagged, compound_tags)
+            except Exception as exc:
+                logger.warning(
+                    "pos() failed on sentence %r (%s) — falling back to nouns()",
+                    sent[:40], exc,
+                )
+                try:
+                    nouns = t.nouns(sent)
+                except Exception as exc2:
+                    logger.warning("nouns() fallback also failed: %s", exc2)
+                    nouns = []
+        else:
+            try:
+                nouns = t.nouns(sent)
+            except Exception as exc:
+                logger.warning("Tagger error on sentence %r: %s", sent[:40], exc)
+                nouns = []
+
         result.append(nouns)
-    logger.debug("extract_nouns: processed %d sentences", len(sentences))
+
+    logger.debug(
+        "extract_nouns: processed %d sentences (use_phrases=%s)",
+        len(sentences), use_phrases,
+    )
     return result
 
 

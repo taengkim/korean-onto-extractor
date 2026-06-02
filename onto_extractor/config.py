@@ -13,6 +13,10 @@ class ExtractConfig(BaseModel):
     min_term_len: int = Field(2, ge=1, description="Minimum character length for a concept term")
     top_terms: int = Field(60, ge=1, description="Top-N terms selected by TF-IDF")
     min_freq: int = Field(2, ge=1, description="Minimum noun frequency across all sentences")
+    use_phrases: bool = Field(
+        True,
+        description="Extract bigram compound noun phrases in addition to simple nouns",
+    )
     use_cooccurrence: bool = Field(True, description="Enable co-occurrence relation extraction")
     cooc_min_count: int = Field(3, ge=1, description="Minimum co-occurrence count to create a relation")
     base_iri: str = Field(
