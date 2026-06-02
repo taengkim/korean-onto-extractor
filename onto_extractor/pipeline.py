@@ -56,6 +56,7 @@ def run_one(url: str, cfg: ExtractConfig) -> Path:
         tagger=cfg.tagger,
         use_phrases=cfg.use_phrases,
         phrase_max_len=cfg.phrase_max_len,
+        compound_noun_tags=cfg.compound_noun_tags,
     )
 
     # Stage 3: Normalize (unit normalization + noise filtering)

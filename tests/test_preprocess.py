@@ -367,3 +367,53 @@ class TestExtractConfigChunkingFields:
         import pytest
         with pytest.raises(Exception):
             ExtractConfig(phrase_max_len=0)
+
+    def test_default_compound_noun_tags_is_none(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig()
+        assert cfg.compound_noun_tags is None
+
+    def test_custom_compound_noun_tags(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig(compound_noun_tags=["NNG", "NNP", "SL"])
+        assert cfg.compound_noun_tags == ["NNG", "NNP", "SL"]
+
+
+# ------------------------------------------------------------------
+# compound_noun_tags override in _collect_nouns_and_phrases
+# ------------------------------------------------------------------
+
+class TestCompoundNounTagsOverride:
+    def test_custom_tag_included_in_run(self):
+        # SL(외래어)를 태그 세트에 포함 → 외래어도 복합명사 형성
+        tags = frozenset({"NNG", "SL"})
+        tagged = [("인공", "NNG"), ("AI", "SL"), ("연구", "NNG")]
+        result = _collect_nouns_and_phrases(tagged, tags)
+        assert "인공AI" in result
+        assert "AI연구" in result
+
+    def test_custom_tag_excluded_breaks_run(self):
+        # SL을 태그 세트에서 제외 → 외래어가 런을 끊음
+        tags = frozenset({"NNG"})
+        tagged = [("인공", "NNG"), ("AI", "SL"), ("연구", "NNG")]
+        result = _collect_nouns_and_phrases(tagged, tags)
+        assert "인공AI" not in result
+        assert "AI연구" not in result
+        assert "인공" in result
+        assert "연구" in result
+
+    def test_nnb_included_when_explicitly_added(self):
+        # NNB를 명시적으로 추가하면 복합명사 형성에 포함됨
+        tags = frozenset({"NNG", "NNB"})
+        tagged = [("사과", "NNG"), ("것", "NNB"), ("과일", "NNG")]
+        result = _collect_nouns_and_phrases(tagged, tags)
+        assert "사과것" in result
+        assert "것과일" in result
+
+    def test_single_custom_tag_only(self):
+        # 커스텀 태그 한 종류만 지정
+        tags = frozenset({"XR"})
+        tagged = [("먹", "XR"), ("이", "XR"), ("살", "NNG")]
+        result = _collect_nouns_and_phrases(tagged, tags)
+        assert "먹이" in result
+        assert "이살" not in result  # NNG는 태그 세트에 없으므로 런 끊김

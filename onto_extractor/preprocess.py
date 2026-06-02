@@ -172,6 +172,7 @@ def extract_nouns(
     tagger: str = "komoran",
     use_phrases: bool = True,
     phrase_max_len: int = 2,
+    compound_noun_tags: list[str] | None = None,
 ) -> list[list[str]]:
     """Extract nouns (and optionally compound noun phrases) from sentences.
 
@@ -185,12 +186,17 @@ def extract_nouns(
         tagger: KoNLPy tagger name ('komoran', 'mecab', 'okt', etc.).
         use_phrases: If True, also extract compound noun phrases.
         phrase_max_len: Maximum n-gram length for compound phrases (default 2 = bigrams).
+        compound_noun_tags: Override POS tag set for compound noun formation.
+            None = use tagger-specific defaults from _COMPOUND_NOUN_TAGS.
 
     Returns:
         Parallel list where each element is the list of nouns/phrases in that sentence.
     """
     t = _get_tagger(tagger)
-    compound_tags = _COMPOUND_NOUN_TAGS.get(tagger, _DEFAULT_COMPOUND_TAGS)
+    if compound_noun_tags is not None:
+        compound_tags = frozenset(compound_noun_tags)
+    else:
+        compound_tags = _COMPOUND_NOUN_TAGS.get(tagger, _DEFAULT_COMPOUND_TAGS)
     result: list[list[str]] = []
 
     for sent in sentences:

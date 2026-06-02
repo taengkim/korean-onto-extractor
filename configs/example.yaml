@@ -29,6 +29,17 @@ min_sent_len: 5
 # 3 = bigrams + trigrams (인공+지능+연구 → 인공지능연구 also extracted)
 phrase_max_len: 2
 
+# POS tags used to form compound nouns (null = tagger 기본값 사용)
+# komoran/mecab/kkma 기본값: NNG, NNP
+# okt 기본값: Noun
+# hannanum 기본값: NC, NQ
+# 예: 외래어(SL)나 어근(XR)을 추가하고 싶을 때 직접 지정
+# compound_noun_tags:
+#   - NNG   # 일반명사
+#   - NNP   # 고유명사
+#   - SL    # 외래어 (예: AI, Python)
+#   - XR    # 어근
+
 # Concept term selection
 min_term_len: 2       # ignore single-character nouns
 top_terms: 60         # keep top-60 by TF-IDF score

@@ -177,6 +177,7 @@ paths = run_all(cfg)
 | `sent_endings` | `["다","요","죠","군요"]` | 문장 경계로 인식할 한국어 어미 목록 |
 | `min_sent_len` | `5` | 분리 후 유지할 문장의 최소 길이(글자수) |
 | `phrase_max_len` | `2` | 복합명사구 최대 형태소 수 (2=바이그램, 3=트라이그램까지) |
+| `compound_noun_tags` | `null` | 복합명사 형성에 사용할 POS 태그 목록. `null`이면 태거별 기본값 사용 (komoran/mecab/kkma: `NNG`·`NNP`, okt: `Noun`, hannanum: `NC`·`NQ`). 외래어(`SL`), 어근(`XR`) 등을 추가할 때 직접 지정. |
 
 ---
 

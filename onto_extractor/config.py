@@ -47,6 +47,15 @@ class ExtractConfig(BaseModel):
         ge=1,
         description="Maximum n-gram length for compound noun phrase extraction (2 = bigram only)",
     )
+    compound_noun_tags: list[str] | None = Field(
+        None,
+        description=(
+            "POS tags treated as content nouns when building compound noun phrases. "
+            "null = use tagger-specific defaults (NNG/NNP for komoran/mecab/kkma, "
+            "Noun for okt, NC/NQ for hannanum). "
+            "Override to include extra tags such as SL (foreign), XR (root), NNB."
+        ),
+    )
 
     @field_validator("tagger")
     @classmethod
