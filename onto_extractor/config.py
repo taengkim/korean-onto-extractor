@@ -30,6 +30,24 @@ class ExtractConfig(BaseModel):
         description="Lexicon directory path. None = use package-bundled lexicons/",
     )
 
+    # --- Sentence-splitting rules ---
+    sent_endings: list[str] = Field(
+        default_factory=lambda: ["다", "요", "죠", "군요"],
+        description="Korean sentence-final endings used to detect sentence boundaries (e.g. '다', '요')",
+    )
+    min_sent_len: int = Field(
+        5,
+        ge=1,
+        description="Minimum character length to keep a sentence after splitting",
+    )
+
+    # --- Noun-phrase chunking rules ---
+    phrase_max_len: int = Field(
+        2,
+        ge=1,
+        description="Maximum n-gram length for compound noun phrase extraction (2 = bigram only)",
+    )
+
     @field_validator("tagger")
     @classmethod
     def validate_tagger(cls, v: str) -> str:

@@ -21,28 +21,49 @@ _COMPOUND_NOUN_TAGS: dict[str, frozenset[str]] = {
 }
 _DEFAULT_COMPOUND_TAGS: frozenset[str] = frozenset({"NNG", "NNP"})
 
-_SENT_SPLIT_RE = re.compile(
-    r"(?<=[.!?])\s+|(?<=다\.)\s+|(?<=요\.)\s+|(?<=죠\.)\s+|(?<=군요\.)\s+",
-    re.UNICODE,
-)
-
+_DEFAULT_SENT_ENDINGS: list[str] = ["다", "요", "죠", "군요"]
 _MIN_SENT_LEN = 5
 
 
-def split_sentences(text: str) -> list[str]:
+def _build_sent_split_re(endings: list[str]) -> re.Pattern[str]:
+    """Build a sentence-splitting regex from a list of Korean terminal endings."""
+    # Always split on punctuation sentence boundaries
+    alts = [r"(?<=[.!?])\s+"]
+    for ending in endings:
+        escaped = re.escape(ending)
+        alts.append(rf"(?<={escaped}\.)\s+")
+    return re.compile("|".join(alts), re.UNICODE)
+
+
+_SENT_SPLIT_RE = _build_sent_split_re(_DEFAULT_SENT_ENDINGS)
+
+
+def split_sentences(
+    text: str,
+    endings: list[str] | None = None,
+    min_len: int = _MIN_SENT_LEN,
+) -> list[str]:
     """Split Korean text into sentences.
 
     Args:
         text: Raw body text (may contain newlines).
+        endings: Korean terminal endings to split on (e.g. ["다", "요"]).
+                 None uses the default set: 다/요/죠/군요.
+        min_len: Minimum character length to keep a candidate sentence.
 
     Returns:
         List of non-empty sentence strings.
     """
+    if endings is None:
+        split_re = _SENT_SPLIT_RE
+    else:
+        split_re = _build_sent_split_re(endings)
+
     normalized = re.sub(r"[ \t]+", " ", text)
     normalized = re.sub(r"\n+", ". ", normalized)
 
-    parts = _SENT_SPLIT_RE.split(normalized)
-    sentences = [p.strip() for p in parts if len(p.strip()) >= _MIN_SENT_LEN]
+    parts = split_re.split(normalized)
+    sentences = [p.strip() for p in parts if len(p.strip()) >= min_len]
     logger.debug("split_sentences: %d sentences extracted", len(sentences))
     return sentences
 
@@ -83,22 +104,28 @@ def _get_tagger(tagger_name: str) -> Any:
 def _collect_nouns_and_phrases(
     tagged: list[tuple[str, str]],
     compound_tags: frozenset[str],
+    max_len: int = 2,
 ) -> list[str]:
-    """Extract individual nouns and bigram compound noun phrases from POS-tagged tokens.
+    """Extract individual nouns and compound noun phrases from POS-tagged tokens.
 
     Scans the tagged token list for runs of consecutive content-noun morphemes.
     For each run it emits:
     - Every individual morpheme in the run
-    - Every adjacent pair (bigram) concatenated as a compound noun
+    - Every contiguous sub-sequence of length 2..max_len concatenated as a phrase
 
-    Example:
+    Example (max_len=2):
         tagged = [("인공", "NNG"), ("지능", "NNG"), ("이", "JX"), ("연구", "NNG")]
         compound_tags = frozenset({"NNG", "NNP"})
         → ["인공", "지능", "인공지능", "연구"]
 
+    Example (max_len=3):
+        tagged = [("인공", "NNG"), ("지능", "NNG"), ("연구", "NNG")]
+        → ["인공", "지능", "연구", "인공지능", "지능연구", "인공지능연구"]
+
     Args:
         tagged: List of (morpheme, pos_tag) tuples from tagger.pos().
         compound_tags: Set of POS tags treated as content nouns.
+        max_len: Maximum n-gram length (default 2 = bigrams only).
 
     Returns:
         Deduplicated list preserving first-occurrence order.
@@ -126,11 +153,12 @@ def _collect_nouns_and_phrases(
                 if m not in seen:
                     seen[m] = None
 
-            # Emit bigrams (adjacent pairs)
-            for k in range(len(run) - 1):
-                phrase = run[k] + run[k + 1]
-                if phrase not in seen:
-                    seen[phrase] = None
+            # Emit n-grams for n in [2, max_len]
+            for n in range(2, max_len + 1):
+                for k in range(len(run) - n + 1):
+                    phrase = "".join(run[k : k + n])
+                    if phrase not in seen:
+                        seen[phrase] = None
 
             i = j
         else:
@@ -143,18 +171,20 @@ def extract_nouns(
     sentences: list[str],
     tagger: str = "komoran",
     use_phrases: bool = True,
+    phrase_max_len: int = 2,
 ) -> list[list[str]]:
     """Extract nouns (and optionally compound noun phrases) from sentences.
 
     When *use_phrases* is True (default), the function uses ``tagger.pos()``
-    to find consecutive content-noun morpheme runs and emits both individual
-    nouns and bigram compound nouns (복합명사).  When False it falls back to
-    the simpler ``tagger.nouns()`` call (original behaviour).
+    to find consecutive content-noun morpheme runs and emits individual nouns
+    plus compound noun phrases up to *phrase_max_len* morphemes long.
+    When False it falls back to the simpler ``tagger.nouns()`` call.
 
     Args:
         sentences: List of sentence strings.
         tagger: KoNLPy tagger name ('komoran', 'mecab', 'okt', etc.).
-        use_phrases: If True, also extract bigram compound noun phrases.
+        use_phrases: If True, also extract compound noun phrases.
+        phrase_max_len: Maximum n-gram length for compound phrases (default 2 = bigrams).
 
     Returns:
         Parallel list where each element is the list of nouns/phrases in that sentence.
@@ -167,7 +197,7 @@ def extract_nouns(
         if use_phrases:
             try:
                 tagged = t.pos(sent)
-                nouns = _collect_nouns_and_phrases(tagged, compound_tags)
+                nouns = _collect_nouns_and_phrases(tagged, compound_tags, max_len=phrase_max_len)
             except Exception as exc:
                 logger.warning(
                     "pos() failed on sentence %r (%s) — falling back to nouns()",
@@ -188,8 +218,8 @@ def extract_nouns(
         result.append(nouns)
 
     logger.debug(
-        "extract_nouns: processed %d sentences (use_phrases=%s)",
-        len(sentences), use_phrases,
+        "extract_nouns: processed %d sentences (use_phrases=%s, phrase_max_len=%d)",
+        len(sentences), use_phrases, phrase_max_len,
     )
     return result
 

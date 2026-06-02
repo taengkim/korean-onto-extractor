@@ -1,4 +1,4 @@
-"""Unit tests for _collect_nouns_and_phrases in preprocess.py.
+"""Unit tests for _collect_nouns_and_phrases and split_sentences in preprocess.py.
 
 All tests use synthetic POS-tagged input — no network or KoNLPy required.
 """
@@ -6,13 +6,17 @@ from __future__ import annotations
 
 import pytest
 
-from onto_extractor.preprocess import _collect_nouns_and_phrases, _COMPOUND_NOUN_TAGS
+from onto_extractor.preprocess import (
+    _collect_nouns_and_phrases,
+    _COMPOUND_NOUN_TAGS,
+    split_sentences,
+)
 
 
 # Shorthand helpers
-def collect(tagged, tagger="komoran"):
+def collect(tagged, tagger="komoran", max_len=2):
     tags = _COMPOUND_NOUN_TAGS[tagger]
-    return _collect_nouns_and_phrases(tagged, tags)
+    return _collect_nouns_and_phrases(tagged, tags, max_len=max_len)
 
 
 # ------------------------------------------------------------------
@@ -227,3 +231,139 @@ class TestEdgeCases:
         bigram_count = sum(1 for w in result if len(w) == 4)      # "명0명1".."명3명4"
         assert individual_count == 5
         assert bigram_count == 4
+
+
+# ------------------------------------------------------------------
+# phrase_max_len (n-gram chunking)
+# ------------------------------------------------------------------
+
+class TestPhraseMaxLen:
+    def test_max_len_1_no_phrases(self):
+        # max_len=1: 개별 명사만, 구 없음
+        tagged = [("인공", "NNG"), ("지능", "NNG"), ("연구", "NNG")]
+        result = collect(tagged, max_len=1)
+        assert "인공" in result
+        assert "지능" in result
+        assert "연구" in result
+        assert "인공지능" not in result
+        assert "지능연구" not in result
+
+    def test_max_len_2_bigrams_only(self):
+        tagged = [("인공", "NNG"), ("지능", "NNG"), ("연구", "NNG")]
+        result = collect(tagged, max_len=2)
+        assert "인공지능" in result
+        assert "지능연구" in result
+        assert "인공지능연구" not in result
+
+    def test_max_len_3_includes_trigram(self):
+        tagged = [("인공", "NNG"), ("지능", "NNG"), ("연구", "NNG")]
+        result = collect(tagged, max_len=3)
+        assert "인공지능" in result
+        assert "지능연구" in result
+        assert "인공지능연구" in result
+
+    def test_max_len_3_four_noun_run(self):
+        # 4개 명사 런, max_len=3
+        tagged = [("자연", "NNG"), ("어", "NNG"), ("처리", "NNG"), ("기술", "NNG")]
+        result = collect(tagged, max_len=3)
+        # 바이그램
+        assert "자연어" in result
+        assert "어처리" in result
+        assert "처리기술" in result
+        # 트라이그램
+        assert "자연어처리" in result
+        assert "어처리기술" in result
+        # 4-그램은 포함 안 됨
+        assert "자연어처리기술" not in result
+
+    def test_max_len_4_includes_four_gram(self):
+        tagged = [("자연", "NNG"), ("어", "NNG"), ("처리", "NNG"), ("기술", "NNG")]
+        result = collect(tagged, max_len=4)
+        assert "자연어처리기술" in result
+
+    def test_max_len_2_run_shorter_than_max(self):
+        # 런이 max_len보다 짧으면 가능한 구만 생성
+        tagged = [("사과", "NNG")]
+        result = collect(tagged, max_len=3)
+        assert result == ["사과"]
+
+
+# ------------------------------------------------------------------
+# split_sentences — custom endings and min_len
+# ------------------------------------------------------------------
+
+class TestSplitSentences:
+    def test_default_endings_splits_on_다(self):
+        text = "인공지능은 발전한다. 기계학습도 중요하다."
+        sentences = split_sentences(text)
+        assert len(sentences) >= 1
+
+    def test_custom_endings_adds_new_boundary(self):
+        # "함" 어미 추가 → "함." 뒤에도 분리
+        text = "연구를 진행함. 결과를 분석한다."
+        default_sents = split_sentences(text)
+        custom_sents = split_sentences(text, endings=["다", "요", "죠", "군요", "함"])
+        # 커스텀 어미를 추가하면 분리 개수가 같거나 더 많아야 함
+        assert len(custom_sents) >= len(default_sents)
+
+    def test_custom_endings_empty_list_only_punctuation(self):
+        # endings=[] → 구두점(.!?)만 분리
+        text = "문장 하나다. 문장 둘이다."
+        sentences = split_sentences(text, endings=[])
+        # 결과는 비어있지 않아야 함 (구두점으로 분리됨)
+        assert len(sentences) >= 1
+
+    def test_min_len_filters_short_segments(self):
+        text = "안녕. 이것은 충분히 긴 문장입니다."
+        long_sents = split_sentences(text, min_len=5)
+        short_sents = split_sentences(text, min_len=1)
+        # min_len=1이면 더 많은 세그먼트를 유지함
+        assert len(short_sents) >= len(long_sents)
+
+    def test_min_len_1_keeps_short_segments(self):
+        text = "안녕. 네."
+        sentences = split_sentences(text, min_len=1)
+        assert any("네" in s for s in sentences)
+
+    def test_newlines_replaced_with_period(self):
+        text = "첫 번째 줄\n두 번째 줄이다."
+        sentences = split_sentences(text)
+        assert len(sentences) >= 1
+
+
+# ------------------------------------------------------------------
+# ExtractConfig chunking fields
+# ------------------------------------------------------------------
+
+class TestExtractConfigChunkingFields:
+    def test_default_sent_endings(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig()
+        assert "다" in cfg.sent_endings
+        assert "요" in cfg.sent_endings
+
+    def test_default_min_sent_len(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig()
+        assert cfg.min_sent_len == 5
+
+    def test_default_phrase_max_len(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig()
+        assert cfg.phrase_max_len == 2
+
+    def test_custom_phrase_max_len(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig(phrase_max_len=3)
+        assert cfg.phrase_max_len == 3
+
+    def test_custom_sent_endings(self):
+        from onto_extractor.config import ExtractConfig
+        cfg = ExtractConfig(sent_endings=["다", "함"])
+        assert cfg.sent_endings == ["다", "함"]
+
+    def test_phrase_max_len_ge_1(self):
+        from onto_extractor.config import ExtractConfig
+        import pytest
+        with pytest.raises(Exception):
+            ExtractConfig(phrase_max_len=0)

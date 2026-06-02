@@ -48,10 +48,15 @@ def run_one(url: str, cfg: ExtractConfig) -> Path:
     text = fetch_text(url)
 
     # Stage 2: Preprocess
-    sentences = split_sentences(text)
+    sentences = split_sentences(text, endings=cfg.sent_endings, min_len=cfg.min_sent_len)
     if not sentences:
         raise ValueError(f"No sentences extracted from {url!r}")
-    noun_lists = extract_nouns(sentences, tagger=cfg.tagger, use_phrases=cfg.use_phrases)
+    noun_lists = extract_nouns(
+        sentences,
+        tagger=cfg.tagger,
+        use_phrases=cfg.use_phrases,
+        phrase_max_len=cfg.phrase_max_len,
+    )
 
     # Stage 3: Normalize (unit normalization + noise filtering)
     noun_lists = normalize_nouns(noun_lists, lexicon)

@@ -13,6 +13,22 @@ tagger: komoran
 # Compound noun phrase extraction (bigram: 인공+지능 → 인공지능)
 use_phrases: true
 
+# --- Sentence-splitting rules ---
+# Korean terminal endings that mark sentence boundaries (used together with .!?)
+sent_endings:
+  - 다
+  - 요
+  - 죠
+  - 군요
+# Minimum character length to keep a sentence after splitting
+min_sent_len: 5
+
+# --- Noun-phrase chunking rules ---
+# Maximum n-gram length for compound noun extraction
+# 2 = bigrams only (인공+지능 → 인공지능)
+# 3 = bigrams + trigrams (인공+지능+연구 → 인공지능연구 also extracted)
+phrase_max_len: 2
+
 # Concept term selection
 min_term_len: 2       # ignore single-character nouns
 top_terms: 60         # keep top-60 by TF-IDF score

@@ -156,17 +156,27 @@ paths = run_all(cfg)
 
 | 키 | 기본값 | 설명 |
 |---|---|---|
+| 키 | 기본값 | 설명 |
+|---|---|---|
 | `tagger` | `komoran` | 형태소 분석기: `komoran` · `mecab` · `okt` · `hannanum` · `kkma` |
 | `min_term_len` | `2` | 개념 최소 글자수 |
 | `top_terms` | `60` | TF-IDF 상위 N개 개념 |
 | `min_freq` | `2` | 명사 최소 출현 빈도 |
-| `use_phrases` | `true` | 바이그램 복합명사 추출 여부 (인공+지능→인공지능) |
+| `use_phrases` | `true` | 복합명사 추출 여부 (인공+지능→인공지능) |
 | `use_cooccurrence` | `true` | 동시출현 관계(`relatedTo`) 사용 여부 |
 | `cooc_min_count` | `3` | 동시출현 임계값 |
 | `base_iri` | `http://example.org/onto#` | 온톨로지 IRI 베이스 |
 | `output_dir` | `output` | .owl 파일 출력 디렉터리 |
 | `lexicon_dir` | `null` | 사전 디렉터리 경로 (`null` = 패키지 내장 사전) |
 | `urls` | `[]` | 배치 처리 URL 목록 (`run_all` 용) |
+
+**청킹 룰 설정** (문장 분리·명사구 추출 규칙을 도메인에 맞게 조정)
+
+| 키 | 기본값 | 설명 |
+|---|---|---|
+| `sent_endings` | `["다","요","죠","군요"]` | 문장 경계로 인식할 한국어 어미 목록 |
+| `min_sent_len` | `5` | 분리 후 유지할 문장의 최소 길이(글자수) |
+| `phrase_max_len` | `2` | 복합명사구 최대 형태소 수 (2=바이그램, 3=트라이그램까지) |
 
 ---
 
